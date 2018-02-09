@@ -9,17 +9,16 @@ function getTickerUSD(ticker, btcCell, retry) {
   var url = "https://api.cryptonator.com/api/ticker/" + ticker.toLowerCase() + "-usd";
   try {
     var response = UrlFetchApp.fetch(url, {'headers': {'User-Agent': IPHONE}});
+    var text = response.getContentText();
+    var json = JSON.parse(text);
+    if (!json.success) {
+      throw "No sucess boolean from cryptonator";
+    }
+    return json.ticker.price;
   } catch (e) {
     if (!retry) {
-      return getTickerUSD(ticker, true);
+      return getTickerUSD(ticker, btcCell, true);
     }
-    return 'failed';
-  }
-  var text = response.getContentText();
-  var json = JSON.parse(text);
-  if (!json.success) {
-    Logger.log("Did not get success:" + text);
     return null;
   }
-  return json.ticker.price;
 }
