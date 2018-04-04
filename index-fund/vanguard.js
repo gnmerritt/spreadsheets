@@ -48,7 +48,10 @@ function populateBalance(cashflow) {
   ledger.getRange(insertRow, 4).setValue(balance);
 }
 
-function calculateNeeded(symbol) {
+/**
+ * @customfunction
+ */
+function calculateNeeded(uninvested, totals) {
   const SYMBOL = 1;
   const BALANCED = 4;
   const ACTUAL = 5;
@@ -59,6 +62,7 @@ function calculateNeeded(symbol) {
   const data = ss.getRangeByName("data");
 
   const stocks = [];
+  const symbols = [];
 
   for (var i = 1; i <= data.getNumRows(); i++) {
     var stock = {
@@ -70,9 +74,19 @@ function calculateNeeded(symbol) {
       needed: 0
     };
     stocks.push(stock);
+    symbols.push(stock.ticker);
   }
 
   var toSpend = ss.getRangeByName("cash").getValue();
+  // sell single shares of any stocks we're overweight in
+  for (var sell = sale(stocks); sell; sell = sale(stocks)) {
+    sell.needed = sell.needed - 1;
+    sell.current = sell.current - sell.price;
+    sell.delta = sell.current - sell.balanced;
+    toSpend += sell.price;
+    Logger.log('sold ' + sell.price + ' of ' + sell.ticker + ' and now have ' + toSpend + ' to spend');
+  }
+
   // spend available funds on new investments until we can't anymore
   for (var s = prioritize(stocks, toSpend); s; s = prioritize(stocks, toSpend)) {
     s.needed = s.needed + 1;
@@ -82,10 +96,16 @@ function calculateNeeded(symbol) {
     Logger.log('spent ' + s.price + ' on ' + s.ticker + ' and have left ' + toSpend);
   }
 
-  // this same function runs for every row, return the # needed for the current row
+  return stocks.map(function(stock) { return stock.needed; });
+}
+
+/**
+ * Given our current portfolio, return the next stock to sell one share of
+ */
+function sale(stocks) {
   for (var i = 0; i < stocks.length; i++) {
-    var s2 = stocks[i];
-    if (s2.ticker === symbol) return s2.needed;
+    var s = stocks[i];
+    if (s.delta > s.price) return s;
   }
 }
 
@@ -106,8 +126,9 @@ function prioritize(stocks, toSpend) {
   if (fromNeedMore) return fromNeedMore;
 
   // now buy whatever we're the furthest off % wise from our target allocation
-  const unbalanced = stocks.slice();
+  const unbalanced = stocks.slice().filter(function(s) { return s.needed >= 0; }); // don't buy things we're already selling
   unbalanced.sort(function(a, b) { return percentDiv(a) - percentDiv(b) }); // ascending on % div
+
   return firstAffordable(unbalanced, toSpend);
 }
 
