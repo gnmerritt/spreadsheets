@@ -125,9 +125,9 @@ function prioritize(stocks, toSpend) {
   const fromNeedMore = firstAffordable(needMore, toSpend);
   if (fromNeedMore) return fromNeedMore;
 
-  // now buy whatever we're the furthest off % wise from our target allocation
+  // now buy whatever we're the furthest off, in $, from our target allocation
   const unbalanced = stocks.slice().filter(function(s) { return s.needed >= 0; }); // don't buy things we're already selling
-  unbalanced.sort(function(a, b) { return percentDiv(a) - percentDiv(b) }); // ascending on % div
+  unbalanced.sort(function(a, b) { return a.delta - b.delta }); // ascending on price difference from expected (most needed first)
 
   return firstAffordable(unbalanced, toSpend);
 }
